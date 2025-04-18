@@ -55,6 +55,7 @@ public:
         pauseButton->Bind(wxEVT_BUTTON, &MainFrame::OnPause, this);
         resumeButton->Bind(wxEVT_BUTTON, &MainFrame::OnResume, this);
         cancelButton->Bind(wxEVT_BUTTON, &MainFrame::OnCancel, this);
+        Bind(wxEVT_CLOSE_WINDOW, &MainFrame::OnClose, this);
     }
 
 private:
@@ -202,10 +203,10 @@ private:
 
         for (size_t i = 0; i < frames.size(); ++i) {
             if (cancelled) break;
-            while (paused) {
-                wxMilliSleep(100);
-                wxYield();
-            }
+            while (paused && !cancelled) {
+    		wxMilliSleep(100);
+    		wxYield();
+			}
 
             double prob = dis(gen);
             wxString status;
@@ -236,7 +237,15 @@ private:
             summaryCtrl->WriteText(wxString::Format("Frame %03zu: %s\n", i + 1, status));
             summaryCtrl->EndTextColour();
             summaryCtrl->ShowPosition(summaryCtrl->GetLastPosition());
+            summaryCtrl->WriteText("Waiting for ACK...\n");
+			summaryCtrl->ShowPosition(summaryCtrl->GetLastPosition());
 
+			if (status != "ACK LOST") {
+    			summaryCtrl->BeginTextColour(*wxGREEN);
+    			summaryCtrl->WriteText("ACK received\n");
+    			summaryCtrl->EndTextColour();
+    			summaryCtrl->ShowPosition(summaryCtrl->GetLastPosition());
+			}
             wxMilliSleep(5);
             wxYield();
         }
@@ -269,7 +278,20 @@ private:
         summaryCtrl->WriteText(wxString::Format("Checksum Value: %s\n", checksum));
         summaryCtrl->WriteText("===========================\n");
         summaryCtrl->ShowPosition(summaryCtrl->GetLastPosition());
+        summaryCtrl->WriteText("\n-- Checksum Frame Sent --\n");
+		summaryCtrl->ShowPosition(summaryCtrl->GetLastPosition());
+
+		summaryCtrl->BeginTextColour(wxColour(0, 180, 255)); 
+		summaryCtrl->WriteText("Header: [CHECKSUM_FRAME]\n");
+		summaryCtrl->WriteText(wxString::Format("Payload (Checksum): %s\n", checksum));
+		summaryCtrl->EndTextColour();
+		summaryCtrl->ShowPosition(summaryCtrl->GetLastPosition());
     }
+    
+    void OnClose(wxCloseEvent& event) {
+    cancelled = true; 
+    Destroy();      
+	}
 };
 
 class MyApp : public wxApp {
